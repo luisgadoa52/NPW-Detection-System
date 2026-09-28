@@ -3,7 +3,7 @@ detect_event.py
 Fase 2 - Deteccion del instante de llegada de la onda de presion negativa
 (NPW) en una senal de presion ruidosa.
 
-Regla de oro: este modulo NUNCA ve el diccionario 'meta' del simulador
+este modulo NUNCA ve el diccionario 'meta' del simulador
 (ubicacion real, t_inicio real, etc.). Solo recibe la senal cruda, como lo
 haria un sensor de verdad. El 'meta' se usa unicamente despues, para medir
 que tan bien le atino el detector (validacion), nunca dentro del algoritmo.
