@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NPW-HMI // Estacion de Monitoreo de Ducto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="crt-shell">
+<div class="win">
+
+  <div class="titlebar">
+    <span class="title-icon">&#9632;</span>
+    <span class="title-text">ESTACION DE MONITOREO — DUCTO PRINCIPAL — LAZO NPW-01</span>
+    <span class="title-buttons">
+      <span class="tbtn">_</span><span class="tbtn">&#9633;</span><span class="tbtn tbtn-close">X</span>
+    </span>
+  </div>
+
+  <div class="menubar">
+    <span>Archivo</span><span>Ver</span><span>Alarmas</span><span>Tendencias</span><span>Ayuda</span>
+  </div>
+
+  <div class="body-grid">
+
+    <!-- ==================== PANEL IZQUIERDO: CONTROL ==================== -->
+    <div class="panel panel-control">
+      <div class="panel-title">PARAMETROS DE SIMULACION</div>
+
+      <div class="field">
+        <label for="ubicacion">UBICACION DE FUGA (m desde Sensor A)</label>
+        <div class="field-row">
+          <input type="range" id="ubicacion" min="0" max="{{ longitud|int }}" step="100" value="4000">
+          <span class="field-value" id="ubicacion-val">4000</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="diametro">DIAMETRO DE ORIFICIO (mm)</label>
+        <div class="field-row">
+          <input type="range" id="diametro" min="2" max="30" step="1" value="20">
+          <span class="field-value" id="diametro-val">20</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="t_inicio">INSTANTE DE FUGA (s)</label>
+        <div class="field-row">
+          <input type="range" id="t_inicio" min="1" max="10" step="0.5" value="5">
+          <span class="field-value" id="t_inicio-val">5.0</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="semilla">SEMILLA (reproducibilidad)</label>
+        <div class="field-row">
+          <input type="number" id="semilla" value="42" class="number-input">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="duracion">DURACION DE ANIMACION (s)</label>
+        <div class="field-row">
+          <input type="range" id="duracion" min="5" max="45" step="1" value="15">
+          <span class="field-value" id="duracion-val">15</span>
+        </div>
+      </div>
+
+      <button id="btn-iniciar" class="btn-win95">&#9654; INICIAR SIMULACION</button>
+      <button id="btn-reset" class="btn-win95">&#9724; DETENER / LIMPIAR</button>
+
+      <div class="static-info">
+        <div>VELOCIDAD DE ONDA (Korteweg): <b>{{ velocidad_onda|round(0) }} m/s</b></div>
+        <div>PRESION DE OPERACION: <b>{{ presion_base_bar|round(0) }} bar</b></div>
+        <div>LONGITUD ENTRE SENSORES: <b>{{ (longitud/1000)|round(0) }} km</b></div>
+        <div class="disclaimer">Nota: perdidas estimadas asumen descarga libre
+        sin contrapresion externa (peor caso), no la perdida exacta garantizada.</div>
+      </div>
+    </div>
+
+    <!-- ==================== COLUMNA DERECHA ==================== -->
+    <div class="panel-right">
+
+      <!-- Banner de alarmas -->
+      <div class="panel alarm-banner" id="alarm-banner" data-state="normal">
+        <span id="alarm-text">SISTEMA EN ESPERA — SIN ALARMAS ACTIVAS</span>
+      </div>
+
+      <!-- Esquema de tuberia -->
+      <div class="panel panel-schematic">
+        <div class="panel-title">ESQUEMA DE DUCTO — LAZO NPW-01</div>
+        <svg id="pipe-svg" viewBox="0 0 1000 140" preserveAspectRatio="none">
+          <line x1="60" y1="70" x2="940" y2="70" class="pipe-line"/>
+          <circle cx="60" cy="70" r="16" class="sensor-node"/>
+          <circle cx="940" cy="70" r="16" class="sensor-node"/>
+          <text x="60" y="30" class="sensor-label" text-anchor="middle">SENSOR A</text>
+          <text x="940" y="30" class="sensor-label" text-anchor="middle">SENSOR B</text>
+          <text x="60" y="115" class="sensor-sub" text-anchor="middle">0 m</text>
+          <text x="940" y="115" class="sensor-sub" text-anchor="middle">{{ longitud|int }} m</text>
+          <g id="leak-marker" style="display:none">
+            <line x1="500" y1="50" x2="500" y2="90" class="leak-line"/>
+            <polygon points="500,90 490,110 510,110" class="leak-flag"/>
+            <text x="500" y="128" class="leak-label" text-anchor="middle" id="leak-label-text">--</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Tendencia -->
+      <div class="panel panel-trend">
+        <div class="panel-title">REGISTRADOR DE TENDENCIA — PRESION (bar) vs TIEMPO (s)
+          <span class="legend"><span class="dot dot-a"></span>SENSOR A &nbsp; <span class="dot dot-b"></span>SENSOR B</span>
+        </div>
+        <canvas id="trend-canvas" width="1000" height="320"></canvas>
+      </div>
+
+      <!-- Tags / lecturas -->
+      <div class="panel panel-tags">
+        <div class="panel-title">LECTURAS EN VIVO</div>
+        <div class="tags-grid">
+          <div class="tag-box">
+            <div class="tag-label">UBICACION ESTIMADA</div>
+            <div class="tag-value" id="tag-ubicacion">-----</div>
+            <div class="tag-unit">m desde Sensor A</div>
+          </div>
+          <div class="tag-box">
+            <div class="tag-label">DIAMETRO ESTIMADO</div>
+            <div class="tag-value" id="tag-diametro">-----</div>
+            <div class="tag-unit">mm</div>
+          </div>
+          <div class="tag-box">
+            <div class="tag-label">LITROS PERDIDOS (ACUM)</div>
+            <div class="tag-value" id="tag-litros">-----</div>
+            <div class="tag-unit">L</div>
+          </div>
+          <div class="tag-box">
+            <div class="tag-label">COSTO ACUMULADO</div>
+            <div class="tag-value" id="tag-costo">-----</div>
+            <div class="tag-unit">MXN</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proyeccion -->
+      <div class="panel panel-projection" id="panel-projection" style="display:none">
+        <div class="panel-title">PROYECCION SI LA FUGA SIGUE ABIERTA (peor caso)</div>
+        <table id="tabla-proyeccion">
+          <thead><tr><th>PERIODO</th><th>LITROS PERDIDOS</th><th>COSTO ESTIMADO</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span id="status-left">LISTO</span>
+    <span id="status-right">NPW-DETECTION-SYSTEM v1.0</span>
+  </div>
+
+</div>
+</div>
+
+<script>
+  window.LONGITUD_M = {{ longitud|int }};
+</script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

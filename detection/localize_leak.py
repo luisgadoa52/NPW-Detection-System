@@ -37,14 +37,23 @@ from simulate_leak import PipelineConfig  # noqa: E402
 class EconomiaConfig:
     """Referencia de precio del crudo para traducir litros perdidos a pesos.
 
-    Valores de ejemplo (ajustables): precio de referencia tipo Mezcla
-    Mexicana en dolares por barril, y un tipo de cambio de referencia.
+    Valores de referencia (actualizables): precio de la Mezcla Mexicana de
+    petroleo en dolares por barril, y el tipo de cambio USD/MXN. Ambos
+    tomados de fuentes oficiales el 25 de septiembre de 2026:
+      - precio_barril_usd: $99.6 USD/barril, reportado por Pemex
+        (fuente: Infobae, "Cierre de la mezcla mexicana de petroleo de
+        este viernes 25 de septiembre").
+      - tipo_cambio_mxn_por_usd: $17.7072 MXN/USD, cierre de mercado
+        (fuente: El Financiero, 25 de septiembre de 2026).
+    Con estos dos valores, precio_litro_mxn sale en ~$11.09 MXN/L.
     En la Fase 5 (dashboard) esto se puede conectar a una fuente de precios
-    en vivo en lugar de un valor fijo.
+    en vivo en lugar de un valor fijo; mientras tanto, hay que actualizar
+    estos dos numeros a mano de vez en cuando para que sean numeros
+    creibles y no un valor fijo desactualizado.
     """
 
-    precio_barril_usd: float = 65.0
-    tipo_cambio_mxn_por_usd: float = 18.5
+    precio_barril_usd: float = 99.6
+    tipo_cambio_mxn_por_usd: float = 17.7072
     litros_por_barril: float = 158.987
 
     @property

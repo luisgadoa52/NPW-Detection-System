@@ -1,0 +1,288 @@
+/* ============================================================
+   Estilo "panel industrial / SCADA clasico" (look Windows 95/98,
+   como el de software de planta tipo Wonderware InTouch, WinCC,
+   iFix de finales de los 90 / principios de los 2000).
+   ============================================================ */
+
+:root {
+  --gris:        #c0c0c0;
+  --gris-osc:    #808080;
+  --gris-clar:   #dfdfdf;
+  --gris-panel:  #b8b8b8;
+  --azul-title1: #000080;
+  --azul-title2: #1084d0;
+  --negro:       #000000;
+  --verde-led:   #33ff55;
+  --ambar-led:   #ffb000;
+  --rojo-alarma: #ff2b2b;
+  --texto:       #101010;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #4a4a4a;
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+  color: var(--texto);
+}
+
+.crt-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 18px;
+}
+
+.win {
+  width: 100%;
+  max-width: 1180px;
+  background: var(--gris);
+  border: 2px solid #fff;
+  box-shadow:
+    inset -1px -1px 0 0 #0a0a0a,
+    inset  1px  1px 0 0 #fff,
+    inset -2px -2px 0 0 var(--gris-osc),
+    inset  2px  2px 0 0 var(--gris-clar);
+  padding: 4px;
+}
+
+/* ---------- Barra de titulo ---------- */
+.titlebar {
+  background: linear-gradient(90deg, var(--azul-title1), var(--azul-title2));
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.5px;
+}
+.title-icon { margin-right: 6px; color: #ffd400; }
+.title-text { flex: 1; }
+.title-buttons { display: flex; gap: 3px; }
+.tbtn {
+  background: var(--gris);
+  color: #000;
+  width: 18px; height: 16px;
+  font-size: 11px;
+  text-align: center;
+  line-height: 16px;
+  border: 1px solid #fff;
+  box-shadow: inset -1px -1px 0 0 #0a0a0a, inset 1px 1px 0 0 #fff;
+  font-weight: bold;
+}
+.tbtn-close { color: #900; }
+
+/* ---------- Barra de menu ---------- */
+.menubar {
+  background: var(--gris);
+  font-size: 12px;
+  padding: 3px 8px;
+  display: flex;
+  gap: 18px;
+  border-bottom: 1px solid var(--gris-osc);
+}
+.menubar span:hover { background: var(--azul-title2); color: #fff; cursor: default; }
+
+/* ---------- Layout general ---------- */
+.body-grid {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 8px;
+  padding: 8px;
+}
+.panel-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ---------- Panel generico (bevel) ---------- */
+.panel {
+  background: var(--gris-panel);
+  padding: 8px;
+  box-shadow:
+    inset -1px -1px 0 0 #fff,
+    inset  1px  1px 0 0 #0a0a0a,
+    inset -2px -2px 0 0 var(--gris-clar),
+    inset  2px  2px 0 0 var(--gris-osc);
+}
+.panel-title {
+  font-size: 11px;
+  font-weight: bold;
+  background: var(--gris-osc);
+  color: #fff;
+  padding: 3px 6px;
+  margin: -8px -8px 8px -8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.legend { font-weight: normal; font-size: 10px; display: flex; align-items: center; gap: 4px;}
+.dot { width: 9px; height: 9px; display: inline-block; border: 1px solid #000; }
+.dot-a { background: var(--verde-led); }
+.dot-b { background: var(--ambar-led); }
+
+/* ---------- Panel de control ---------- */
+.panel-control { align-self: start; }
+.field { margin-bottom: 12px; }
+.field label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: bold;
+  margin-bottom: 3px;
+  color: #202020;
+}
+.field-row { display: flex; align-items: center; gap: 6px; }
+.field-row input[type="range"] { flex: 1; accent-color: #000080; }
+.field-value {
+  min-width: 46px;
+  text-align: right;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 12px;
+  background: #000;
+  color: var(--verde-led);
+  padding: 1px 4px;
+  border: 1px solid #000;
+}
+.number-input {
+  width: 100%;
+  font-family: "Share Tech Mono", monospace;
+  background: #fff;
+  border: 1px solid #000;
+  box-shadow: inset 1px 1px 0 0 var(--gris-osc);
+  padding: 2px 4px;
+  font-size: 13px;
+}
+
+.btn-win95 {
+  width: 100%;
+  background: var(--gris);
+  border: none;
+  box-shadow:
+    inset -1px -1px 0 0 #0a0a0a,
+    inset  1px  1px 0 0 #fff,
+    inset -2px -2px 0 0 var(--gris-osc),
+    inset  2px  2px 0 0 var(--gris-clar);
+  padding: 8px 4px;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+.btn-win95:active {
+  box-shadow:
+    inset  1px  1px 0 0 #0a0a0a,
+    inset -1px -1px 0 0 #fff,
+    inset  2px  2px 0 0 var(--gris-osc),
+    inset -2px -2px 0 0 var(--gris-clar);
+}
+.btn-win95:disabled { color: #777; cursor: default; }
+
+.static-info {
+  margin-top: 14px;
+  font-size: 10.5px;
+  border-top: 1px dashed var(--gris-osc);
+  padding-top: 8px;
+  line-height: 1.6;
+}
+.disclaimer { margin-top: 6px; font-style: italic; color: #333; }
+
+/* ---------- Banner de alarmas ---------- */
+.alarm-banner {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  padding: 10px;
+  background: #6b6b6b;
+  color: #dcdcdc;
+  letter-spacing: 1px;
+}
+.alarm-banner[data-state="baja"] {
+  background: var(--ambar-led);
+  color: #1a1200;
+  animation: blink-amber 1s steps(1) infinite;
+}
+.alarm-banner[data-state="alta"] {
+  background: var(--rojo-alarma);
+  color: #fff;
+  animation: blink-red 0.6s steps(1) infinite;
+}
+@keyframes blink-amber {
+  50% { background: #7a5900; color: var(--ambar-led); }
+}
+@keyframes blink-red {
+  50% { background: #6b0000; color: #fff; }
+}
+
+/* ---------- Esquema de tuberia ---------- */
+.panel-schematic svg { width: 100%; height: 110px; display: block; background: #a9a9a9; }
+.pipe-line { stroke: #303030; stroke-width: 10; }
+.sensor-node { fill: #2266cc; stroke: #000; stroke-width: 2; }
+.sensor-label { font-size: 13px; font-weight: bold; fill: #101010; font-family: Tahoma, sans-serif; }
+.sensor-sub { font-size: 11px; fill: #303030; font-family: "Share Tech Mono", monospace; }
+.leak-line { stroke: var(--rojo-alarma); stroke-width: 3; }
+.leak-flag { fill: var(--rojo-alarma); stroke: #400; }
+.leak-label { font-size: 12px; font-weight: bold; fill: #400; font-family: "Share Tech Mono", monospace; }
+
+/* ---------- Tendencia ---------- */
+.panel-trend canvas { width: 100%; height: 320px; background: #000; display: block; }
+
+/* ---------- Tags ---------- */
+.tags-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.tag-box {
+  background: #000;
+  border: 2px inset #666;
+  padding: 8px 6px;
+  text-align: center;
+}
+.tag-label { font-size: 9.5px; color: #9a9a9a; font-weight: bold; letter-spacing: 0.5px; }
+.tag-value {
+  font-family: "VT323", "Share Tech Mono", monospace;
+  font-size: 34px;
+  line-height: 1.1;
+  color: var(--verde-led);
+  text-shadow: 0 0 6px rgba(51,255,85,0.55);
+}
+.tag-unit { font-size: 9.5px; color: #777; }
+
+/* ---------- Proyeccion ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: #fff;
+}
+th, td {
+  border: 1px solid var(--gris-osc);
+  padding: 5px 8px;
+  text-align: right;
+}
+th { background: var(--gris-osc); color: #fff; text-align: center; }
+td:first-child, th:first-child { text-align: left; }
+
+/* ---------- Status bar ---------- */
+.statusbar {
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  padding: 3px 8px;
+  background: var(--gris);
+  box-shadow: inset 1px 1px 0 0 var(--gris-osc);
+}
+
+@media (max-width: 900px) {
+  .body-grid { grid-template-columns: 1fr; }
+  .tags-grid { grid-template-columns: repeat(2, 1fr); }
+}
