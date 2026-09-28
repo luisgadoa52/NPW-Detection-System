@@ -16,6 +16,14 @@ Fisica utilizada:
   (la misma matematica del golpe de ariete), ligada al caudal que escapa
   por el orificio.
 - Caudal de fuga: ecuacion de orificio (Torricelli generalizado).
+- Compensacion de las estaciones de bombeo: una fuga pequena (por debajo
+  del margen de control, tipicamente 1-3% del caudal nominal) se
+  compensa casi por completo y la presion regresa cerca de su punto de
+  operacion en segundos. Una fuga grande satura la capacidad de las
+  bombas y la presion se estabiliza en un nuevo nivel, mas bajo,
+  permanente. Este es el motivo real por el que el metodo NPW debe
+  cazar el transitorio rapido: una vez que el control compensa una fuga
+  chica, un detector que solo mira "presion actual baja" deja de verla.
 
 Nota honesta: este es un modelo de onda viajera simplificado, no resuelve
 las ecuaciones completas de flujo transitorio 1D por Metodo de las
@@ -45,6 +53,9 @@ class PipelineConfig:
     coef_descarga: float = 0.62  # Cd tipico de un orificio de borde afilado
     atenuacion_por_km: float = 0.03  # perdida fraccional de amplitud por km recorrido
     fs: float = 100.0  # frecuencia de muestreo de los sensores [Hz]
+    caudal_nominal: float = 0.15  # caudal nominal de operacion del ducto [m3/s] (~540 m3/h, tipico troncal 12")
+    margen_compensacion_bombeo: float = 0.03  # fraccion maxima del caudal nominal que el sistema
+    # de bombeo compensa activamente antes de saturarse (umbral tipico reportado en la industria: 1-3%)
 
     @property
     def area_ducto(self) -> float:
@@ -73,13 +84,40 @@ def amplitud_onda(diametro_fuga: float, cfg: PipelineConfig) -> float:
     return cfg.densidad_fluido * cfg.velocidad_onda * delta_v
 
 
-def _forma_pulso(t: np.ndarray, t_llegada: float, amplitud: float, tau: float = 3.0) -> np.ndarray:
+def factor_compensacion(diametro_fuga: float, cfg: PipelineConfig) -> float:
     """
-    Forma de la caida de presion al paso de la onda: caida rapida y
-    recuperacion exponencial (efecto de 'line pack' acomodandose).
+    Fraccion del deficit de presion que las estaciones de bombeo alcanzan
+    a compensar manteniendo su punto de operacion (control de presion o
+    de flujo). Una fuga chica (por debajo del margen de control) se
+    compensa casi por completo (valor cercano a 1). Una fuga grande
+    satura la capacidad de las bombas (valor cercano a 0) y la presion
+    no se recupera, se estabiliza en un nuevo nivel permanente mas bajo.
+    """
+    q_fuga = caudal_fuga(diametro_fuga, cfg)
+    fraccion_fuga = q_fuga / cfg.caudal_nominal
+    if fraccion_fuga <= cfg.margen_compensacion_bombeo:
+        return 1.0
+    return float(np.clip(cfg.margen_compensacion_bombeo / fraccion_fuga, 0.0, 1.0))
+
+
+def _forma_pulso(
+    t: np.ndarray,
+    t_llegada: float,
+    amplitud_transitoria: float,
+    nivel_sostenido: float,
+    tau: float = 3.0,
+) -> np.ndarray:
+    """
+    Forma de la caida de presion al paso de la onda: caida rapida inicial
+    (amplitud_transitoria) que se relaja exponencialmente, no hasta el
+    baseline original, sino hasta un nuevo nivel permanente mas bajo
+    (nivel_sostenido) si la fuga supera lo que el bombeo puede compensar.
+    Si nivel_sostenido es 0 (fuga chica, totalmente compensada), esto se
+    reduce a una recuperacion completa hacia el baseline.
     """
     dt = t - t_llegada
-    return np.where(dt >= 0, -amplitud * np.exp(-dt / tau), 0.0)
+    caida = -(amplitud_transitoria - nivel_sostenido) * np.exp(-dt / tau) - nivel_sostenido
+    return np.where(dt >= 0, caida, 0.0)
 
 
 def simular_fuga(
@@ -110,7 +148,8 @@ def simular_fuga(
         'presion_A' -> serie de presion en sensor A [Pa]
         'presion_B' -> serie de presion en sensor B [Pa]
         'meta'      -> dict con el ground truth (ubicacion, diametro, t_inicio,
-                        velocidad de onda, amplitud generada, tiempos de llegada)
+                        velocidad de onda, amplitud generada, tiempos de llegada,
+                        factor de compensacion del bombeo, nivel sostenido)
     """
     if cfg is None:
         cfg = PipelineConfig()
@@ -123,6 +162,8 @@ def simular_fuga(
 
     c = cfg.velocidad_onda
     amplitud_generada = amplitud_onda(diametro, cfg)
+    compensacion = factor_compensacion(diametro, cfg)
+    nivel_sostenido_leak = amplitud_generada * (1 - compensacion)
 
     dist_a = ubicacion
     dist_b = cfg.longitud - ubicacion
@@ -136,8 +177,12 @@ def simular_fuga(
     presion_a = np.full(n_muestras, cfg.presion_base)
     presion_b = np.full(n_muestras, cfg.presion_base)
 
-    presion_a = presion_a + _forma_pulso(t, t_llegada_a, amplitud_generada * atenuacion_a)
-    presion_b = presion_b + _forma_pulso(t, t_llegada_b, amplitud_generada * atenuacion_b)
+    presion_a = presion_a + _forma_pulso(
+        t, t_llegada_a, amplitud_generada * atenuacion_a, nivel_sostenido_leak * atenuacion_a
+    )
+    presion_b = presion_b + _forma_pulso(
+        t, t_llegada_b, amplitud_generada * atenuacion_b, nivel_sostenido_leak * atenuacion_b
+    )
 
     # Ruido de sensor: ruido gaussiano de instrumento + vibracion de bombeo (senoidal)
     ruido_instrumento_a = rng.normal(0, cfg.presion_base * 0.0015, n_muestras)
@@ -157,11 +202,32 @@ def simular_fuga(
             "t_inicio_s": t_inicio,
             "velocidad_onda_mps": c,
             "amplitud_generada_pa": amplitud_generada,
+            "factor_compensacion_bombeo": compensacion,
+            "nivel_sostenido_pa": nivel_sostenido_leak,
             "t_llegada_A_s": t_llegada_a,
             "t_llegada_B_s": t_llegada_b,
             "longitud_ducto_m": cfg.longitud,
         },
     }
+
+
+def _resumen_caso(nombre: str, diametro: float, cfg: PipelineConfig) -> dict:
+    resultado = simular_fuga(
+        ubicacion=4000.0,  # fuga a 4 km del sensor A
+        diametro=diametro,
+        t_inicio=10.0,
+        cfg=cfg,
+        semilla=42,
+    )
+    meta = resultado["meta"]
+    print(f"\n--- {nombre} (diametro {diametro * 1000:.0f} mm) ---")
+    print(f"Amplitud transitoria: {meta['amplitud_generada_pa'] / 1e5:.2f} bar")
+    print(f"Factor de compensacion del bombeo: {meta['factor_compensacion_bombeo'] * 100:.1f}%")
+    print(
+        f"Nivel sostenido tras el transitorio: "
+        f"{meta['nivel_sostenido_pa'] / 1e5:.2f} bar por debajo del baseline"
+    )
+    return resultado
 
 
 if __name__ == "__main__":
@@ -170,34 +236,32 @@ if __name__ == "__main__":
     cfg = PipelineConfig()
     print(f"Velocidad de la onda (Korteweg): {cfg.velocidad_onda:.1f} m/s")
 
-    resultado = simular_fuga(
-        ubicacion=4000.0,  # fuga a 4 km del sensor A
-        diametro=0.02,  # agujero equivalente de 2 cm (toma clandestina tipica)
-        t_inicio=10.0,
-        semilla=42,
-    )
+    # Caso 1: fuga chica (toma clandestina discreta) -> el bombeo la compensa casi por completo
+    chica = _resumen_caso("Fuga chica (compensada por el bombeo)", diametro=0.008, cfg=cfg)
 
-    meta = resultado["meta"]
-    print(
-        f"Fuga simulada en x={meta['ubicacion_real_m']} m, "
-        f"diametro={meta['diametro_m'] * 1000:.1f} mm"
-    )
-    print(f"Amplitud de onda generada: {meta['amplitud_generada_pa'] / 1e5:.3f} bar")
-    print(
-        f"Llegada esperada a A: {meta['t_llegada_A_s']:.2f} s, "
-        f"a B: {meta['t_llegada_B_s']:.2f} s"
-    )
+    # Caso 2: fuga grande (toma clandestina agresiva / ruptura) -> satura la capacidad de bombeo
+    grande = _resumen_caso("Fuga grande (satura la capacidad de bombeo)", diametro=0.02, cfg=cfg)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(resultado["t"], resultado["presion_A"] / 1e5, label="Sensor A", linewidth=0.8)
-    ax.plot(resultado["t"], resultado["presion_B"] / 1e5, label="Sensor B", linewidth=0.8)
-    ax.axvline(
-        meta["t_inicio_s"], color="gray", linestyle="--", linewidth=0.8, label="Inicio de fuga"
-    )
-    ax.set_xlabel("Tiempo [s]")
-    ax.set_ylabel("Presion [bar]")
-    ax.set_title("Simulacion de fuga - Onda de presion negativa")
-    ax.legend()
+    fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    for ax, resultado, titulo in [
+        (axes[0], chica, "Fuga chica: la presion se recupera casi al baseline"),
+        (axes[1], grande, "Fuga grande: la presion se estabiliza en un nuevo nivel, mas bajo"),
+    ]:
+        ax.plot(resultado["t"], resultado["presion_A"] / 1e5, label="Sensor A", linewidth=0.8)
+        ax.plot(resultado["t"], resultado["presion_B"] / 1e5, label="Sensor B", linewidth=0.8)
+        ax.axvline(
+            resultado["meta"]["t_inicio_s"],
+            color="gray",
+            linestyle="--",
+            linewidth=0.8,
+            label="Inicio de fuga",
+        )
+        ax.set_ylabel("Presion [bar]")
+        ax.set_title(titulo)
+        ax.legend(loc="lower right")
+
+    axes[-1].set_xlabel("Tiempo [s]")
+    fig.suptitle("Simulacion de fuga - Onda de presion negativa")
     fig.tight_layout()
     fig.savefig("simulacion_fuga_ejemplo.png", dpi=150)
-    print("Grafica guardada en simulacion_fuga_ejemplo.png")
+    print("\nGrafica guardada en simulacion_fuga_ejemplo.png")
